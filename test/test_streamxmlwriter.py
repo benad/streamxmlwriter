@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 import unittest
-from io import StringIO, BytesIO
+from io import BytesIO
 import sys
 from streamxmlwriter import *
 
@@ -287,7 +287,6 @@ class NamespaceTestCase(unittest.TestCase):
 class IterwriteTestCase(unittest.TestCase):
     def testBasic(self):
         from lxml import etree
-        from io import StringIO
         w, out = writer_and_output()
         xml = """\
 <!--comment before--><?pi before?><foo xmlns="http://example.org/ns1">
@@ -298,22 +297,23 @@ class IterwriteTestCase(unittest.TestCase):
     oh dear<!--comment inside -->text here too
   </bar>
 </foo><?pi after?><!--comment after-->"""
+        xmlbytes = xml.encode('utf-8')
         events = ("start", "end", "start-ns", "end-ns", "pi", "comment")
-        w.iterwrite(etree.iterparse(StringIO(xml), events))
+        w.iterwrite(etree.iterparse(BytesIO(xmlbytes), events))
         w.close()
-        self.assertEqual(out.getvalue(), xml)
+        self.assertEqual(out.getvalue(), xmlbytes)
 
     def testChunkedText(self):
         from lxml import etree
-        from io import StringIO
         for padding in (16382, 32755):
             padding = " " * padding
             w, out = writer_and_output()
             xml = "%s<doc><foo>hello</foo></doc>" % padding
+            xmlbytes = xml.encode('utf-8')
             events = ("start", "end")
-            w.iterwrite(etree.iterparse(StringIO(xml), events))
+            w.iterwrite(etree.iterparse(BytesIO(xmlbytes), events))
             w.close()
-            self.assertEqual(out.getvalue(), xml.strip())
+            self.assertEqual(out.getvalue(), xml.strip().encode('utf-8'))
 
 
 # from lxml import etree
