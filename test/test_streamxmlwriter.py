@@ -22,11 +22,12 @@
 # THE SOFTWARE.
 
 import unittest
-from cStringIO import StringIO
+from io import StringIO, BytesIO
+import sys
 from streamxmlwriter import *
 
 def writer_and_output(*args, **kwargs):
-    out = StringIO()
+    out = BytesIO()
     return XMLWriter(out, *args, **kwargs), out
 
 
@@ -35,39 +36,39 @@ class XMLWriterTestCase(unittest.TestCase):
         w, out = writer_and_output()
         w.start("foo")
         w.end()
-        self.assertEqual(out.getvalue(), "<foo />")
+        self.assertEqual(out.getvalue(), b"<foo />")
 
     def testTextData(self):
         w, out = writer_and_output()
         w.start("foo")
         w.data("bar")
         w.end()
-        self.assertEqual(out.getvalue(), "<foo>bar</foo>")
+        self.assertEqual(out.getvalue(), b"<foo>bar</foo>")
 
     def testSingleAttribute(self):
         w, out = writer_and_output()
         w.start("foo", {"bar": "baz"})
         w.end()
-        self.assertEqual(out.getvalue(), "<foo bar=\"baz\" />")
+        self.assertEqual(out.getvalue(), b"<foo bar=\"baz\" />")
 
     def testSortedAttributes(self):
         w, out = writer_and_output()
         w.start("foo", {"bar": "bar", "baz": "baz"})
         w.end()
-        self.assertEqual(out.getvalue(), "<foo bar=\"bar\" baz=\"baz\" />")
+        self.assertEqual(out.getvalue(), b"<foo bar=\"bar\" baz=\"baz\" />")
 
     def testEscapeAttributes(self):
         w, out = writer_and_output()
         w.start("foo", {"bar": "<>&\""})
         w.end()
-        self.assertEqual(out.getvalue(), "<foo bar=\"&lt;>&amp;&quot;\" />")
+        self.assertEqual(out.getvalue(), b"<foo bar=\"&lt;>&amp;&quot;\" />")
 
     def testEscapeCharacterData(self):
         w, out = writer_and_output()
         w.start("foo")
         w.data("<>&")
         w.end()
-        self.assertEqual(out.getvalue(), "<foo>&lt;&gt;&amp;</foo>")
+        self.assertEqual(out.getvalue(), b"<foo>&lt;&gt;&amp;</foo>")
 
     def testFileEncoding(self):
         w1, out1 = writer_and_output()
@@ -76,24 +77,27 @@ class XMLWriterTestCase(unittest.TestCase):
         w4, out4 = writer_and_output(encoding="utf-8")
         for w in (w1, w2, w3, w4):
             w.start("foo")
-            w.data(u"\xe5\xe4\xf6\u2603\u2764")
+            if (sys.hexversion >= 0x030000F0):
+              eval('w.data("\xe5\xe4\xf6\u2603\u2764")')
+            else:
+              eval('w.data(u"\xe5\xe4\xf6\u2603\u2764")')
             w.end()
         self.assertEqual(out1.getvalue(),
-                         "<foo>\xc3\xa5\xc3\xa4\xc3\xb6\xe2\x98\x83\xe2\x9d\xa4</foo>")
+                         b"<foo>\xc3\xa5\xc3\xa4\xc3\xb6\xe2\x98\x83\xe2\x9d\xa4</foo>")
         self.assertEqual(out2.getvalue(),
-                         "<foo>&#229;&#228;&#246;&#9731;&#10084;</foo>")
+                         b"<foo>&#229;&#228;&#246;&#9731;&#10084;</foo>")
         self.assertEqual(out3.getvalue(),
-                         "<?xml version='1.0' encoding='iso-8859-1'?>" \
-                         "<foo>\xe5\xe4\xf6&#9731;&#10084;</foo>")
+                         b"<?xml version='1.0' encoding='iso-8859-1'?>" \
+                         b"<foo>\xe5\xe4\xf6&#9731;&#10084;</foo>")
         self.assertEqual(out4.getvalue(),
-                         "<foo>\xc3\xa5\xc3\xa4\xc3\xb6\xe2\x98\x83\xe2\x9d\xa4</foo>")
+                         b"<foo>\xc3\xa5\xc3\xa4\xc3\xb6\xe2\x98\x83\xe2\x9d\xa4</foo>")
 
     def testClose(self):
         w, out = writer_and_output()
         w.start("a")
         w.start("b")
         w.close()
-        self.assertEqual(out.getvalue(), "<a><b /></a>")
+        self.assertEqual(out.getvalue(), b"<a><b /></a>")
 
     def testDeclarationLateDeclarationRaisesSyntaxError(self):
         w, out = writer_and_output()
@@ -106,13 +110,13 @@ class XMLWriterTestCase(unittest.TestCase):
         w.declaration()
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<?xml version='1.0' encoding='utf-8'?>")
+                         b"<?xml version='1.0' encoding='utf-8'?>")
 
     def testAbbrevEmpty(self):
         w, out = writer_and_output(abbrev_empty=False)
         w.start("a")
         w.close()
-        self.assertEqual(out.getvalue(), "<a></a>")
+        self.assertEqual(out.getvalue(), b"<a></a>")
 
 
     def testNamedEnd(self):
@@ -135,7 +139,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.start("b")
         w.start("c")
         w.close()
-        self.assertEqual(out.getvalue(), "<a>\n  <b>foo</b>\n  <b>bar</b>\n  <b>\n    <c />\n  </b>\n</a>")
+        self.assertEqual(out.getvalue(), b"<a>\n  <b>foo</b>\n  <b>bar</b>\n  <b>\n    <c />\n  </b>\n</a>")
 
     def testComment(self):
         w, out = writer_and_output(pretty_print=True)
@@ -144,7 +148,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.start("b")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<a>\n  <!--comment-->\n  <b />\n</a>")
+                         b"<a>\n  <!--comment-->\n  <b />\n</a>")
 
     def testCommentBeforeRoot(self):
         w, out = writer_and_output(pretty_print=True)
@@ -152,7 +156,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.start("a")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<!--comment-->\n<a />")
+                         b"<!--comment-->\n<a />")
 
     def testCommentAfterRoot(self):
         w, out = writer_and_output(pretty_print=True)
@@ -161,7 +165,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.comment("comment")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<a />\n<!--comment-->")
+                         b"<a />\n<!--comment-->")
 
     def testPI(self):
         w, out = writer_and_output(pretty_print=True)
@@ -170,7 +174,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.start("b")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<a>\n  <?foo bar?>\n  <b />\n</a>")
+                         b"<a>\n  <?foo bar?>\n  <b />\n</a>")
 
     def testPIBeforeRoot(self):
         w, out = writer_and_output(pretty_print=True)
@@ -178,7 +182,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.start("a")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<?foo bar?>\n<a />")
+                         b"<?foo bar?>\n<a />")
 
     def testPIAfterRoot(self):
         w, out = writer_and_output(pretty_print=True)
@@ -187,7 +191,7 @@ class PrettyPrintTestCase(unittest.TestCase):
         w.pi("foo", "bar")
         w.close()
         self.assertEqual(out.getvalue(),
-                         "<a />\n<?foo bar?>")
+                         b"<a />\n<?foo bar?>")
 
 
 class NamespaceTestCase(unittest.TestCase):
@@ -197,7 +201,7 @@ class NamespaceTestCase(unittest.TestCase):
         w.start("{http://example.org/ns}foo")
         w.close()
         self.assertEqual(out.getvalue(),
-                         '<foo xmlns="http://example.org/ns" />')
+                         b'<foo xmlns="http://example.org/ns" />')
 
     def testAttribute(self):
         w, out = writer_and_output()
@@ -205,7 +209,7 @@ class NamespaceTestCase(unittest.TestCase):
         w.start("foo", {"{http://example.org/ns}bar": "baz"})
         w.close()
         self.assertEqual(out.getvalue(),
-                         '<foo xmlns:a="http://example.org/ns" a:bar="baz" />')
+                         b'<foo xmlns:a="http://example.org/ns" a:bar="baz" />')
 
     def testPrefixedElement(self):
         w, out = writer_and_output()
@@ -213,7 +217,7 @@ class NamespaceTestCase(unittest.TestCase):
         w.start("{http://example.org/ns}foo")
         w.close()
         self.assertEqual(out.getvalue(),
-                         '<a:foo xmlns:a="http://example.org/ns" />')
+                         b'<a:foo xmlns:a="http://example.org/ns" />')
 
     def testDefaultUnbinding(self):
         w, out = writer_and_output()
@@ -223,8 +227,8 @@ class NamespaceTestCase(unittest.TestCase):
         w.start("foo")
         w.close()
         self.assertEqual(out.getvalue(),
-                         '<foo xmlns="http://example.org/ns">'
-                         '<foo xmlns="" /></foo>')
+                         b'<foo xmlns="http://example.org/ns">'
+                         b'<foo xmlns="" /></foo>')
 
     def testPrefixRebinding(self):
         w, out = writer_and_output()
@@ -234,9 +238,9 @@ class NamespaceTestCase(unittest.TestCase):
         w.start("{http://example.org/ns2}foo")
         w.close()
         self.assertEqual(out.getvalue(),
-                         '<a:foo xmlns:a="http://example.org/ns">'
-                         '<a:foo xmlns:a="http://example.org/ns2" />'
-                         '</a:foo>')
+                         b'<a:foo xmlns:a="http://example.org/ns">'
+                         b'<a:foo xmlns:a="http://example.org/ns2" />'
+                         b'</a:foo>')
 
     def testAttributesSameLocalName(self):
         w, out = writer_and_output()
@@ -247,10 +251,10 @@ class NamespaceTestCase(unittest.TestCase):
                         "{http://example.org/ns2}attr": "2"})
         w.close()
         self.assertEquals(out.getvalue(),
-                          '<foo xmlns:a="http://example.org/ns1"'
-                          ' xmlns:b="http://example.org/ns2">'
-                          '<bar a:attr="1" b:attr="2" />'
-                          '</foo>')
+                          b'<foo xmlns:a="http://example.org/ns1"'
+                          b' xmlns:b="http://example.org/ns2">'
+                          b'<bar a:attr="1" b:attr="2" />'
+                          b'</foo>')
 
     def testAttributesSameLocalOnePrefixed(self):
         w, out = writer_and_output()
@@ -260,9 +264,9 @@ class NamespaceTestCase(unittest.TestCase):
                         "attr": "2"})
         w.close()
         self.assertEquals(out.getvalue(),
-                          '<foo xmlns:a="http://example.org/ns">'
-                          '<bar attr="2" a:attr="1" />'
-                          '</foo>')
+                          b'<foo xmlns:a="http://example.org/ns">'
+                          b'<bar attr="2" a:attr="1" />'
+                          b'</foo>')
 
     def testAttributesSameLocalOnePrefixedOneDefault(self):
         w, out = writer_and_output()
@@ -274,16 +278,16 @@ class NamespaceTestCase(unittest.TestCase):
                  "{http://example.org/ns2}attr": "2"})
         w.close()
         self.assertEquals(out.getvalue(),
-                          '<foo xmlns="http://example.org/ns1"'
-                          ' xmlns:a="http://example.org/ns2">'
-                          '<bar attr="1" a:attr="2" />'
-                          '</foo>')
+                          b'<foo xmlns="http://example.org/ns1"'
+                          b' xmlns:a="http://example.org/ns2">'
+                          b'<bar attr="1" a:attr="2" />'
+                          b'</foo>')
 
 
 class IterwriteTestCase(unittest.TestCase):
     def testBasic(self):
         from lxml import etree
-        from cStringIO import StringIO
+        from io import StringIO
         w, out = writer_and_output()
         xml = """\
 <!--comment before--><?pi before?><foo xmlns="http://example.org/ns1">
@@ -301,7 +305,7 @@ class IterwriteTestCase(unittest.TestCase):
 
     def testChunkedText(self):
         from lxml import etree
-        from cStringIO import StringIO
+        from io import StringIO
         for padding in (16382, 32755):
             padding = " " * padding
             w, out = writer_and_output()

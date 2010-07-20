@@ -37,6 +37,7 @@ __version__ = "0.3"
 
 INDENT = "  "
 
+import codecs
 
 def escape_attribute(value, encoding):
     """Escape an attribute value using the given encoding."""
@@ -46,7 +47,7 @@ def escape_attribute(value, encoding):
         value = value.replace("<", "&lt;")
     if "\"" in value:
         value = value.replace("\"", "&quot;")
-    return value.encode(encoding, "xmlcharrefreplace")
+    return value
 
 
 def escape_cdata(data, encoding):
@@ -57,7 +58,7 @@ def escape_cdata(data, encoding):
         data = data.replace("<", "&lt;")
     if ">" in data:
         data = data.replace(">", "&gt;")
-    return data.encode(encoding, "xmlcharrefreplace")
+    return data
 
 
 def _nssplitname(name):
@@ -97,10 +98,10 @@ def sorter_factory(attrib_order):
 
     """
     attrib_order = attrib_order.copy()
-    for tag, names in attrib_order.iteritems():
+    for tag, names in attrib_order.items():
         attrib_order[tag] = dict([(_nssplitname(name), n)
                                   for (n, name) in enumerate(names)])
-    for tag, order in attrib_order.iteritems():
+    for tag, order in attrib_order.items():
         order.setdefault(None, len(order))
 
     def asort(pairs, tag):
@@ -125,8 +126,8 @@ def tostring(element, *args, **kwargs):
     keyword arguments are passed on to the underlying `XMLWriter`.
 
     """
-    import cStringIO
-    out = cStringIO.StringIO()
+    import io
+    out = io.StringIO()
     writer = XMLWriter(out, *args, **kwargs)
     writer.element(element)
     writer.close()
@@ -136,6 +137,11 @@ def tostring(element, *args, **kwargs):
 class XMLSyntaxError(Exception):
     """XML syntactic errors, such as ill-nestedness."""
 
+def StringAndNoneCompare(x):
+  if x == None:
+    return ''
+  else:
+    return x
 
 class XMLWriter(object):
     """Stream XML writer"""
@@ -166,7 +172,8 @@ class XMLWriter(object):
         }
 
         """
-        self.write = file.write
+        self.writer = codecs.getwriter(encoding)(file, errors='xmlcharrefreplace')
+        self._file = file
         self.encoding = encoding
         self._pretty_print = pretty_print
         self._sort = sort
@@ -183,6 +190,9 @@ class XMLWriter(object):
         if self.encoding not in ("us-ascii", "utf-8"):
             self.declaration()
         self._wrote_data = False
+
+    def write(self, obj):
+      self.writer.write(obj)
 
     def start(self, tag, attributes=None, nsmap=None, **kwargs):
         """Open a new `tag` element.
@@ -207,9 +217,9 @@ class XMLWriter(object):
             old_namespaces = {'': None}
         namespaces = old_namespaces.copy()
         if nsmap:
-            self._new_namespaces.update(reversed(item) for item in nsmap.iteritems())
-        values = self._new_namespaces.values()
-        for uri, prefix in namespaces.items():
+            self._new_namespaces.update(reversed(item) for item in nsmap.items())
+        values = list(self._new_namespaces.values())
+        for uri, prefix in list(namespaces.items()):
             if prefix in values:
                 del namespaces[uri]
 
@@ -224,13 +234,14 @@ class XMLWriter(object):
         if attributes:
             kwargs.update(attributes)
         attributes = [(_nssplitname(name), value)
-                      for (name, value) in kwargs.iteritems()]
+                      for (name, value) in kwargs.items()]
         attributes = [(name, _cname(name, namespaces, cnames), value)
                       for (name, value) in attributes]
 
         # Write namespace declarations for all new mappings
-        for (uri, prefix) in sorted(namespaces.iteritems(),
-                                    key=lambda x: x[1]):
+        # Benad
+        for (uri, prefix) in sorted(iter(namespaces.items()),
+          key=lambda x: StringAndNoneCompare(x[1])):
             if uri not in old_namespaces or old_namespaces.get(uri) != prefix:
                 value = escape_attribute(uri, self.encoding)
                 if prefix:
@@ -386,7 +397,7 @@ class XMLWriter(object):
 
 def delayed_iterator(iterable):
     iterable = iter(iterable)
-    previous = iterable.next()
+    previous = next(iterable)
     for item in iterable:
         yield previous
         previous = item
