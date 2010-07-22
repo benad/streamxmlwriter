@@ -57,6 +57,12 @@ class XMLWriterTestCase(unittest.TestCase):
         w.end()
         self.assertEqual(out.getvalue(), b"<foo bar=\"bar\" baz=\"baz\" />")
 
+    def testUnsortedAttributes(self):
+        w, out = writer_and_output(sort=False)
+        w.start("foo", (("baz", "baz"), ("bar", "bar")))
+        w.end()
+        self.assertEqual(out.getvalue(), b"<foo baz=\"baz\" bar=\"bar\" />")
+
     def testEscapeAttributes(self):
         w, out = writer_and_output()
         w.start("foo", {"bar": "<>&\""})

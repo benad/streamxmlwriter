@@ -231,15 +231,22 @@ class XMLWriter(object):
         self.write("<" + tag)
 
         # Make cnames for the attributes
-        if attributes:
-            kwargs.update(attributes)
+        #if attributes:
+        #    kwargs.update(attributes)
+        all_attributes = []
+        if kwargs and len(kwargs) > 0:
+            all_attributes.extend(kwargs.items())
+        if attributes and len(attributes) > 0:
+            if type(attributes) == dict:
+                all_attributes.extend(attributes.items())
+            else:
+                all_attributes.extend(attributes)
         attributes = [(_nssplitname(name), value)
-                      for (name, value) in kwargs.items()]
+                      for (name, value) in all_attributes]
         attributes = [(name, _cname(name, namespaces, cnames), value)
                       for (name, value) in attributes]
 
         # Write namespace declarations for all new mappings
-        # Benad
         for (uri, prefix) in sorted(iter(namespaces.items()),
           key=lambda x: StringAndNoneCompare(x[1])):
             if uri not in old_namespaces or old_namespaces.get(uri) != prefix:
