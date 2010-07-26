@@ -311,6 +311,14 @@ class XMLWriter(object):
             self.write(escape_cdata(data, self.encoding))
             self._wrote_data = True
 
+    def data_raw(self, data):
+        """Write directly to output. Useful when str is XML generated elsewhere"""
+        if self._start_tag_open:
+            self.write(">")
+            self._start_tag_open = False
+        self.write(data)
+        self._wrote_data = True
+
     def element(self, element, attributes=None, data=None, **kwargs):
         if hasattr(element, "tag"):
             attrib = dict(element.attrib)
