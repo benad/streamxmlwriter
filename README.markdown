@@ -134,6 +134,11 @@ Example::
     }
 
 
+Testing
+-------
+
+Run `nosetest`.
+
 
 License
 -------
